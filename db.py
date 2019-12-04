@@ -45,10 +45,11 @@ def initialize():
             """
             CREATE TABLE IF NOT EXISTS updates (
                 id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                chat_id INTEGER NOT NULL,
                 type INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
                 body TEXT,
-                chat_id INTEGER NOT NULL,
                 FOREIGN KEY (chat_id)
                     REFERENCES chats (id),
                 PRIMARY KEY (id, chat_id)
@@ -72,69 +73,6 @@ def initialize():
             );
             """
         )
-
-        # cursor.execute(
-        #     """
-        #     INSERT INTO users (
-        #         id, name, username, password
-        #     )
-        #     VALUES (?, ?, ?, ?);
-        #     """,
-        #     (random.randrange(100_001, 1_000_000), "Tushar", "tusharsadhwani", "abcd1234")
-        # )
-
-        # query = cursor.execute("SELECT (id) FROM users WHERE username = ?;", ("tusharsadhwani",))
-        # user_id = query.fetchone()[0]
-
-        # cursor.execute(
-        #     """
-        #     INSERT INTO chats
-        #     VALUES (?, ?, ?);
-        #     """,
-        #     (random.randrange(-1_999_999, -1_000_000), "Test Chat", "test")
-        # )
-
-        # query = cursor.execute("SELECT (id) FROM chats WHERE address = ?;", ("test",))
-        # chat_id = query.fetchone()[0]
-
-        # cursor.execute(
-        #     """
-        #     INSERT INTO updates (
-        #         id,
-        #         type,
-        #         timestamp,
-        #         body,
-        #         chat_id)
-        #     VALUES (?, ?, ?, ?, ?);
-        #     """,
-        #     (1, 0, time.time_ns(), "Testing", chat_id)
-        # )
-
-        # cursor.execute(
-        #     """
-        #     INSERT INTO likes
-        #     VALUES (?, ?, ?);
-        #     """,
-        #     (chat_id, 1, user_id)
-        # )
-
-        # for i in cursor.execute("select * from chats;"):
-        #     print(i)
-        # for i in cursor.execute("select * from users;"):
-        #     print(i)
-        # for i in cursor.execute("select * from updates;"):
-        #     print(i)
-        # for i in cursor.execute("select * from likes;"):
-        #     print(i)
-
-        # for i in cursor.execute(
-        #     """
-        #     SELECT likes.chat_id, likes.user_id, updates.timestamp
-        #     FROM likes JOIN updates
-        #     ON likes.update_id = updates.id;
-        #     """
-        # ):
-        #     print(i)
 
         conn.commit()
         conn.close()
