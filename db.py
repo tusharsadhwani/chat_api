@@ -26,7 +26,8 @@ def initialize():
                 id INTEGER NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
                 username TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                token TEXT
             );
             """
         )
@@ -74,7 +75,9 @@ def initialize():
 
         # cursor.execute(
         #     """
-        #     INSERT INTO users
+        #     INSERT INTO users (
+        #         id, name, username, password
+        #     )
         #     VALUES (?, ?, ?, ?);
         #     """,
         #     (random.randrange(100_001, 1_000_000), "Tushar", "tusharsadhwani", "abcd1234")
@@ -143,3 +146,10 @@ def initialize():
     finally:
         if conn:
             conn.close()
+
+def exists(query):
+    """Acts as a boolean for a COUNT(*) query"""
+    return bool(query.fetchone()[0])
+
+if __name__ == "__main__":
+    initialize()
