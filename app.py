@@ -1,6 +1,7 @@
 """Simple Chat API"""
 import random
 import sqlite3
+import time
 from flask import Flask, jsonify, request, abort
 
 import db
@@ -48,6 +49,7 @@ def signup():
 
     return jsonify(success=True, message="Account successfully created")
 
+
 @app.route('/login', methods=['GET'])
 def login():
     required_args = ('username', 'password')
@@ -90,24 +92,124 @@ def login():
     return jsonify(token=new_token, message="Successfully logged in")
 
 
-# @app.route('/chats', methods=['GET'])
-# def get_chats():
-#     query = cursor.execute()
-#     return jsonify(list(CHATS.keys()))
+@app.route('/newchat', methods=['GET'])
+def new_chat():
+    required_args = ('token', 'name', 'address')
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
+
+    token = request.args['token']
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="Invalid token")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    user_id = query.fetchone()[0]
+
+    name = request.args['name']
+    address = request.args['address'].lower()
+
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM chats
+        WHERE address = ?;
+        """,
+        (address,)
+    )
+    if db.exists(query):
+        return jsonify(error=401, message="Chat address already in use")
+
+    while True:
+        chat_id = random.randrange(-1_999_999, -1_000_000)
+        query = cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM chats
+            WHERE id = ?;
+            """,
+            (chat_id,)
+        )
+        if not db.exists(query):
+            break
+
+    cursor.execute(
+        """
+        INSERT INTO chats
+        VALUES (?, ?, ?);
+        """,
+        (chat_id, name, address)
+    )
+    cursor.execute(
+        """
+        INSERT INTO updates (
+            id, user_id, chat_id, type, timestamp)
+        VALUES (?, ?, ?, ?, ?);
+        """,
+        (1, user_id, chat_id, 1, time.time())
+    )
+    conn.commit()
+
+    return jsonify(id=chat_id)
+
+
+@app.route('/chats', methods=['GET'])
+def get_chats():
+    required_args = ('token',)
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
+
+    token = request.args['token']
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="Invalid token")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    user_id = query.fetchone()[0]
+
+    query = cursor.execute(
+        """
+        SELECT chat_id
+        FROM updates
+        WHERE user_id = ?
+        GROUP BY chat_id;
+        """,
+        (user_id,)
+    )
+    result = [row[0] for row in query.fetchall()]
+    return jsonify(result)
 
 # @app.route('/chats/<int:chat_id>', methods=['GET'])
 # def get_chats_by_id(chat_id):
 #     return jsonify(CHATS.get(chat_id))
-
-# @app.route('/newchat', methods=['GET'])
-# def new_chat():
-#     while True:
-#         new_id = random.randrange(0, 1_000_000)
-#         if new_id not in CHATS:
-#             break
-
-#     CHATS[new_id] = []
-#     return jsonify({'id': new_id})
 
 # @app.route('/sendmessage/<int:chat_id>', methods=['GET'])
 # def send_message(chat_id):
