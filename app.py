@@ -17,7 +17,7 @@ def signup():
         return abort(401)
 
     name = request.args['name']
-    username = request.args['username']
+    username = request.args['username'].lower()
     password = request.args['password']
 
     query = cursor.execute(
@@ -54,7 +54,7 @@ def login():
     if any(arg not in request.args for arg in required_args):
         return abort(401)
 
-    username = request.args['username']
+    username = request.args['username'].lower()
     password = request.args['password']
 
     print(username, password)
