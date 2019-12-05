@@ -389,6 +389,7 @@ def send_message():
         """,
         (latest_update_id+1, user_id, chat_id, 0, time.time_ns(), msg_body)
     )
+    conn.commit()
 
     return jsonify(success=True)
 
