@@ -1,4 +1,4 @@
-"""Sends an email to a recepient"""
+"""Functions for email verification"""
 # pylint: disable=no-member
 import base64
 import pickle
@@ -11,17 +11,11 @@ from google.auth.transport.requests import Request
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/gmail.send'
 ]
 
-MSG_BODY = ""
-MSG_BODY_PLAIN = ""
-
-def main():
-    """Shows basic usage of the Gmail API.
-    Lists the user's Gmail labels.
-    """
+def generate_creds():
+    """Generates the user's access token to the Gmail API"""
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -41,15 +35,33 @@ def main():
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
+
+def send_verification_email(recepient, link):
+    """Sends a verification email"""
+    if not os.path.exists('token.pickle'):
+        raise FileNotFoundError("File 'token.pickle' does not exist")
+
+    with open('token.pickle', 'rb') as token:
+        creds = pickle.load(token)
+
+    if not creds.valid:
+        raise ValueError(
+            "Credentials are not valid, run generate_token() manually")
+
     service = build('gmail', 'v1', credentials=creds)
 
+    message_body = f'''
+        Click this link to verify your email:
+        <br><br>
+        <a href="{link}">{link}</a>'''
+
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = "TEST"
-    msg['From'] = "example@gmail.com"
-    msg['To'] = "example@gmail.com"
+    msg['Subject'] = "Verify your Email"
+    msg['From'] = open('./.email').read()
+    msg['To'] = recepient
     # msg['Cc'] = ','.join(recepients_list)
-    msg.attach(MIMEText(MSG_BODY_PLAIN, 'plain'))
-    msg.attach(MIMEText(MSG_BODY, 'html'))
+    msg.attach(MIMEText(message_body, 'html'))
+    # msg.attach(MIMEText(MSG_BODY_PLAIN, 'plain'))
     raw_message_no_attachment = base64.urlsafe_b64encode(msg.as_bytes())
     raw_message_no_attachment = raw_message_no_attachment.decode()
     encoded_msg = {'raw': raw_message_no_attachment}
@@ -59,6 +71,3 @@ def main():
         service.users().messages().send(userId='me', body=encoded_msg).execute()
     except Exception as ex:
         print("Error:", ex)
-
-if __name__ == '__main__':
-    main()
