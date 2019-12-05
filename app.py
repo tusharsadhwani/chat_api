@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request, abort
 
 import db
 import util
+import verify
 
 app = Flask(__name__)
 conn = sqlite3.connect("./chat.db", check_same_thread=False)
@@ -13,11 +14,12 @@ cursor = conn.cursor()
 
 @app.route('/signup', methods=['GET'])
 def signup():
-    required_args = ('name', 'username', 'password')
+    required_args = ('name', 'email', 'username', 'password')
     if any(arg not in request.args for arg in required_args):
         return abort(401)
 
     name = request.args['name']
+    email = request.args['email']
     username = request.args['username'].lower()
     password = request.args['password']
 
@@ -30,24 +32,65 @@ def signup():
         (username,)
     )
     if db.exists(query):
-        return jsonify(error=401, message="User with this username already exists")
+        return jsonify(
+            error=401, message="User with this username already exists")
 
+    verification_code = util.generate_token()
     cursor.execute(
         """
         INSERT INTO users (
-            id, name, username, password)
-        VALUES (?, ?, ?, ?);
+            id, name, email, username, password, verification_code)
+        VALUES (?, ?, ?, ?, ?);
         """,
         (
             random.randrange(100_001, 1_000_000),
             name,
             username,
             password,
+            verification_code
         )
     )
     conn.commit()
 
-    return jsonify(success=True, message="Account successfully created")
+    link = f'http://127.0.0.1:5000/verify?token={verification_code}'
+    verify.send_verification_email(email, link)
+    return jsonify(success=True, message="Verification email sent")
+
+
+@app.route('/verify', methods=['GET'])
+def verify_email():
+    required_args = ('token',)
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
+
+    verificaton_code = request.args['token']
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE verification_code = ?;
+        """,
+        (verificaton_code,)
+    )
+    result = query.fetchone()
+
+    if result is None:
+        return jsonify(error=401, message="Invalid verification code")
+
+    user_id = result[0]
+
+    cursor.execute(
+        """
+        UPDATE TABLE users
+        SET verified = 1
+        WHERE id = ?;
+        """,
+        (user_id,)
+    )
+    conn.commit()
+
+    return jsonify(success=True, message="Email verified")
 
 
 @app.route('/login', methods=['GET'])
@@ -77,6 +120,19 @@ def login():
     print(db_password)
     if password != db_password:
         return jsonify(error=404, message="Invalid password")
+
+    query = cursor.execute(
+        """
+        SELECT verified
+        FROM users
+        WHERE username = ?;
+        """,
+        (username,)
+    )
+    verified = bool(query.fetchone()[0])
+
+    if not verified:
+        return jsonify(error=401, message="Your email isn't verified yet")
 
     new_token = util.generate_token()
     cursor.execute(

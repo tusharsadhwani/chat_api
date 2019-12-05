@@ -25,8 +25,11 @@ def initialize():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
+                email TEXT NOT NULL,
                 username TEXT NOT NULL,
                 password TEXT NOT NULL,
+                verification_code TEXT,
+                verified INTEGER DEFAULT 0,
                 token TEXT
             );
             """
