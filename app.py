@@ -2,7 +2,7 @@
 import random
 import sqlite3
 import time
-from flask import Flask, jsonify, request, redirect, abort
+from flask import Flask, jsonify, request, abort
 
 import db
 import util
@@ -334,7 +334,7 @@ def send_message():
         (latest_update_id+1, user_id, chat_id, 0, time.time_ns(), msg_body)
     )
 
-    return redirect(f'/chats/{chat_id}?token={token}')
+    return jsonify(success=True)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
