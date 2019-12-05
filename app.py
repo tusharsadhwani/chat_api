@@ -40,11 +40,12 @@ def signup():
         """
         INSERT INTO users (
             id, name, email, username, password, verification_code)
-        VALUES (?, ?, ?, ?, ?);
+        VALUES (?, ?, ?, ?, ?, ?);
         """,
         (
             random.randrange(100_001, 1_000_000),
             name,
+            email,
             username,
             password,
             verification_code
@@ -82,7 +83,7 @@ def verify_email():
 
     cursor.execute(
         """
-        UPDATE TABLE users
+        UPDATE users
         SET verified = 1
         WHERE id = ?;
         """,

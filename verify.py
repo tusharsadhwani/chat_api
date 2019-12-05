@@ -44,10 +44,6 @@ def send_verification_email(recepient, link):
     with open('token.pickle', 'rb') as token:
         creds = pickle.load(token)
 
-    if not creds.valid:
-        raise ValueError(
-            "Credentials are not valid, run generate_token() manually")
-
     service = build('gmail', 'v1', credentials=creds)
 
     message_body = f'''
