@@ -2,7 +2,7 @@
 import random
 import sqlite3
 import time
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, redirect, abort
 
 import db
 import util
@@ -207,18 +207,134 @@ def get_chats():
     result = [row[0] for row in query.fetchall()]
     return jsonify(result)
 
-# @app.route('/chats/<int:chat_id>', methods=['GET'])
-# def get_chats_by_id(chat_id):
-#     return jsonify(CHATS.get(chat_id))
+@app.route('/chats/<string:chat_id>', methods=['GET'])
+def get_chats_by_id(chat_id):
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        return abort(401)
 
-# @app.route('/sendmessage/<int:chat_id>', methods=['GET'])
-# def send_message(chat_id):
-#     if chat_id not in CHATS:
-#         return jsonify({'error': 404, 'message': "chat not found"})
+    required_args = ('token',)
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
 
-#     msg_body = request.args.get('body') or ""
-#     CHATS[chat_id].append({'type': "message", 'message': {'body': msg_body}})
-#     return redirect(f'/chats/{chat_id}')
+    token = request.args['token']
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="Invalid token")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    user_id = query.fetchone()[0]
+
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM updates
+        WHERE chat_id = ?
+        AND user_id = ?;
+        """,
+        (chat_id, user_id)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="You are unauthorized to view this chat")
+
+    query = cursor.execute(
+        """
+        SELECT *
+        FROM updates
+        WHERE chat_id = ?
+        ORDER BY id;
+        """,
+        (chat_id,)
+    )
+    updates = query.fetchall()
+    return jsonify(list(updates))
+
+@app.route('/sendmessage', methods=['GET'])
+def send_message():
+    required_args = ('token', 'chat_id', 'message')
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
+
+    token = request.args['token']
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="Invalid token")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    user_id = query.fetchone()[0]
+
+    chat_id = request.args['chat_id']
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        return abort(401)
+
+    msg_body = request.args['message']
+
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM updates
+        WHERE chat_id = ?
+        AND user_id = ?;
+        """,
+        (chat_id, user_id)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="You are unauthorized to view this chat")
+
+    # Get the current latest update ID
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM updates
+        WHERE chat_id = ?
+        ORDER BY id DESC
+        LIMIT 1;
+        """,
+        (chat_id,)
+    )
+    latest_update_id = query.fetchone()[0]
+
+    cursor.execute(
+        """
+        INSERT INTO updates (
+            id, user_id, chat_id, type, timestamp, body)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (latest_update_id+1, user_id, chat_id, 0, time.time_ns(), msg_body)
+    )
+
+    return redirect(f'/chats/{chat_id}?token={token}')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000, debug=True)
