@@ -4,5 +4,4 @@ chat.db
 chat.db-journal
 credentials.json
 token.pickle
-.email
-.domain
+.settings

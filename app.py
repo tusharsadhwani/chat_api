@@ -1,4 +1,5 @@
 """Simple Chat API"""
+import configparser
 import random
 import sqlite3
 import time
@@ -12,6 +13,7 @@ import verify
 app = Flask(__name__)
 conn = sqlite3.connect("./chat.db", check_same_thread=False)
 cursor = conn.cursor()
+
 
 @app.route('/signup', methods=['GET'])
 def signup():
@@ -37,8 +39,12 @@ def signup():
         return jsonify(
             error=401, message="User with this username already exists")
 
+    config = configparser.ConfigParser()
+    config.read('./.settings')
+
+    domain = config['settings']['domain'].rstrip('/')
     verification_code = util.generate_token()
-    link = f'http://127.0.0.1:5000/verify?token={verification_code}'
+    link = f'{domain}/verify?token={verification_code}'
     try:
         verify.send_verification_email(email, link)
     except httplib2.ServerNotFoundError:
@@ -66,6 +72,7 @@ def signup():
 
 @app.route('/verify', methods=['GET'])
 def verify_email():
+    '''Verifies a user account by the verification code'''
     required_args = ('token',)
     if any(arg not in request.args for arg in required_args):
         return abort(401)
@@ -102,6 +109,7 @@ def verify_email():
 
 @app.route('/login', methods=['GET'])
 def login():
+    '''Logs a user in by username and password, and returns an access token'''
     required_args = ('username', 'password')
     if any(arg not in request.args for arg in required_args):
         return abort(401)
@@ -157,6 +165,7 @@ def login():
 
 @app.route('/newchat', methods=['GET'])
 def new_chat():
+    '''Creates a new group chat and adds you in it'''
     required_args = ('token', 'name', 'address')
     if any(arg not in request.args for arg in required_args):
         return abort(401)
@@ -232,6 +241,7 @@ def new_chat():
 
 @app.route('/chats', methods=['GET'])
 def get_chats():
+    '''Returns a list of the chats' information a user is in'''
     required_args = ('token',)
     if any(arg not in request.args for arg in required_args):
         return abort(401)
@@ -270,8 +280,10 @@ def get_chats():
     result = [row[0] for row in query.fetchall()]
     return jsonify(result)
 
+
 @app.route('/chats/<string:chat_id>', methods=['GET'])
 def get_chats_by_id(chat_id):
+    '''Returns a chat's list of messages'''
     try:
         chat_id = int(chat_id)
     except ValueError:
@@ -317,7 +329,7 @@ def get_chats_by_id(chat_id):
 
     query = cursor.execute(
         """
-        SELECT 
+        SELECT
             updates.id, updates.timestamp, updates.type, updates.body,
             users.id, users.name, users.username
         FROM updates
@@ -331,8 +343,10 @@ def get_chats_by_id(chat_id):
     updates = query.fetchall()
     return jsonify(list(updates))
 
+
 @app.route('/sendmessage', methods=['GET'])
 def send_message():
+    '''Sends a message in a chat'''
     required_args = ('token', 'chat_id', 'message')
     if any(arg not in request.args for arg in required_args):
         return abort(401)

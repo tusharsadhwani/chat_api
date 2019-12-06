@@ -1,6 +1,7 @@
 """Functions for email verification"""
 # pylint: disable=no-member
 import base64
+import configparser
 import pickle
 import os.path
 from email.mime.multipart import MIMEMultipart
@@ -51,9 +52,14 @@ def send_verification_email(recepient, link):
         <br><br>
         <a href="{link}">{link}</a>'''
 
+    config = configparser.ConfigParser()
+    config.read('./.settings')
+
+    sender_email = config['settings']['email']
+
     msg = MIMEMultipart('alternative')
     msg['Subject'] = "Verify your Email"
-    msg['From'] = open('./.email').read().strip()
+    msg['From'] = sender_email
     msg['To'] = recepient
     # msg['Cc'] = ','.join(recepients_list)
     msg.attach(MIMEText(message_body, 'html'))
