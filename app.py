@@ -1,4 +1,5 @@
 """Simple Chat API"""
+import httplib2
 import random
 import sqlite3
 import time
@@ -36,6 +37,12 @@ def signup():
             error=401, message="User with this username already exists")
 
     verification_code = util.generate_token()
+    link = f'http://127.0.0.1:5000/verify?token={verification_code}'
+    try:
+        verify.send_verification_email(email, link)
+    except httplib2.ServerNotFoundError:
+        return jsonify(error=404, message="Unable to reach Server")
+
     cursor.execute(
         """
         INSERT INTO users (
@@ -52,9 +59,7 @@ def signup():
         )
     )
     conn.commit()
-
-    link = f'http://127.0.0.1:5000/verify?token={verification_code}'
-    verify.send_verification_email(email, link)
+    
     return jsonify(success=True, message="Verification email sent")
 
 
@@ -311,10 +316,15 @@ def get_chats_by_id(chat_id):
 
     query = cursor.execute(
         """
-        SELECT *
+        SELECT (
+            updates.id, updates.timestamp, updates.type, updates.body,
+            users.id, users.name, users.username
+        )
         FROM updates
+        INNER JOIN users
+        ON updates.user_id = users.id
         WHERE chat_id = ?
-        ORDER BY id;
+        ORDER BY updates.id;
         """,
         (chat_id,)
     )
