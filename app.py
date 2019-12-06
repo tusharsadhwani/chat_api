@@ -1,8 +1,8 @@
 """Simple Chat API"""
-import httplib2
 import random
 import sqlite3
 import time
+import httplib2
 from flask import Flask, jsonify, request, abort
 
 import db
@@ -15,6 +15,7 @@ cursor = conn.cursor()
 
 @app.route('/signup', methods=['GET'])
 def signup():
+    '''Creates a new user via email, username and password'''
     required_args = ('name', 'email', 'username', 'password')
     if any(arg not in request.args for arg in required_args):
         return abort(401)
@@ -59,7 +60,7 @@ def signup():
         )
     )
     conn.commit()
-    
+
     return jsonify(success=True, message="Verification email sent")
 
 
@@ -222,7 +223,7 @@ def new_chat():
             id, user_id, chat_id, type, timestamp)
         VALUES (?, ?, ?, ?, ?);
         """,
-        (1, user_id, chat_id, 1, time.time())
+        (1, user_id, chat_id, 1, time.time_ns())
     )
     conn.commit()
 
@@ -316,10 +317,9 @@ def get_chats_by_id(chat_id):
 
     query = cursor.execute(
         """
-        SELECT (
+        SELECT 
             updates.id, updates.timestamp, updates.type, updates.body,
             users.id, users.name, users.username
-        )
         FROM updates
         INNER JOIN users
         ON updates.user_id = users.id
