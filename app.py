@@ -270,14 +270,16 @@ def get_chats():
 
     query = cursor.execute(
         """
-        SELECT chat_id
+        SELECT updates.chat_id, chats.name
         FROM updates
-        WHERE user_id = ?
+        INNER JOIN chats
+        ON updates.chat_id = chats.id
+        WHERE updates.user_id = ?
         GROUP BY chat_id;
         """,
         (user_id,)
     )
-    result = [row[0] for row in query.fetchall()]
+    result = [[row[0], row[1]] for row in query.fetchall()]
     return jsonify(result)
 
 
