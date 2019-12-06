@@ -53,7 +53,7 @@ def send_verification_email(recepient, link):
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = "Verify your Email"
-    msg['From'] = open('./.email').read()
+    msg['From'] = open('./.email').read().strip()
     msg['To'] = recepient
     # msg['Cc'] = ','.join(recepients_list)
     msg.attach(MIMEText(message_body, 'html'))
