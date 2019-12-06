@@ -344,6 +344,81 @@ def get_chats_by_id(chat_id):
     return jsonify(list(updates))
 
 
+@app.route('/joinchat/<string:address>', methods=['GET'])
+def join_chat(address):
+    '''Joins the user into a chat'''
+    required_args = ('token',)
+    if any(arg not in request.args for arg in required_args):
+        return abort(401)
+
+    token = request.args['token']
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    if not db.exists(query):
+        return jsonify(error=401, message="Invalid token")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE token = ?;
+        """,
+        (token,)
+    )
+    user_id = query.fetchone()[0]
+
+    query = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM chats
+        WHERE address = ?;
+        """,
+        (address,)
+    )
+    if not db.exists(query):
+        return jsonify(error=404, message="This chat does not exist")
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM chats
+        WHERE address = ?;
+        """,
+        (address,)
+    )
+    chat_id = query.fetchone()[0]
+
+    query = cursor.execute(
+        """
+        SELECT id
+        FROM updates
+        WHERE chat_id = ?
+        ORDER BY id DESC
+        LIMIT 1;
+        """,
+        (chat_id,)
+    )
+    latest_update_id = query.fetchone()[0]
+
+    cursor.execute(
+        """
+        INSERT INTO updates (
+            id, user_id, chat_id, type, timestamp)
+        VALUES (?, ?, ?, ?, ?);
+        """,
+        (latest_update_id+1, user_id, chat_id, 1, time.time_ns())
+    )
+    conn.commit()
+
+    return jsonify(success=True)
+
+
 @app.route('/sendmessage', methods=['GET'])
 def send_message():
     '''Sends a message in a chat'''
@@ -393,7 +468,6 @@ def send_message():
     if not db.exists(query):
         return jsonify(error=401, message="You are unauthorized to view this chat")
 
-    # Get the current latest update ID
     query = cursor.execute(
         """
         SELECT id
